@@ -27,6 +27,7 @@ loom = { version = "0.7", features = ["checkpoint"] }
 [dev-dependencies]
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 criterion = "0.8"
+flume = "0.12"
 
 [target.'cfg(unix)'.dev-dependencies]
 nix = { workspace = true, features = ["resource", "signal"] }
@@ -40,4 +41,12 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(loom)'] }
 
 [[bench]]
 name = "comparison"
+harness = false
+
+[[bench]]
+name = "remote"
+harness = false
+
+[[bench]]
+name = "remote_with_many_receive"
 harness = false
