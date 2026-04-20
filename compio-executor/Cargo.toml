@@ -26,6 +26,7 @@ loom = { version = "0.7", features = ["checkpoint"] }
 
 [dev-dependencies]
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
+criterion = "0.8"
 
 [target.'cfg(unix)'.dev-dependencies]
 nix = { workspace = true, features = ["resource", "signal"] }
@@ -36,3 +37,7 @@ enable_log = ["compio-log/enable_log"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(loom)'] }
+
+[[bench]]
+name = "comparison"
+harness = false
