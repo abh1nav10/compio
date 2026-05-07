@@ -305,16 +305,12 @@ impl Task {
 
         header.shared.store(ptr::null_mut(), Release);
 
-        // Dropping the future/result and waker during unwinding on unwind-unsafe
-        // types could trigger a second panic. Skip content drops if already panicking.
-        if ::std::thread::panicking() {
-            trace!("Skipping content drops during panic");
-            return;
-        }
-
         if !state.is_completed() {
             trace!("Dropping future");
-            // The task has not completed yet, drop future
+            // The task has not completed yet, drop future.
+            // `drop_future` returns early if we enter it while panicking
+            // and if not so, it ensures that we abort if dropping the
+            // future or output panics.
             unsafe { (header.vtable.drop_future)(self.0, false) };
         }
 
@@ -323,8 +319,13 @@ impl Task {
         // it exists.
         if state.has_waker() && !state.is_setting_waker() {
             trace!("Dropping waker");
-            crate::panic_guard!();
-
+            // If the waker here points to `Arc<Notify>`, then dropping it is just
+            // an `Arc` refcount decrement and if the caller spawned another task just
+            // to poll the `JoinHandle`(should rarely happen), dropping the waker here
+            // calls `Task::drop` which has got a panic guard. So, we dont use a panic
+            // guard here. This also ensures that the refcount of this waker is decremented
+            // appropriately which would not happen if we return early from this function if we
+            // enter into it while panicking.
             header
                 .waker
                 .with_mut(|ptr| unsafe { drop_in_place(ptr.cast::<Waker>()) });
@@ -374,7 +375,6 @@ impl Drop for Task {
         if state.count() > 1 {
             return;
         };
-
         // The future/result and waker types are unwind-unsafe (ManuallyDrop in
         // union, MaybeUninit). Dropping them during an existing panic could
         // trigger a second panic, which would be UB. Skip content drops but
